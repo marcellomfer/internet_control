@@ -1,0 +1,1457 @@
+#!/bin/sh
+# SISTEMA DE CONTROLE DE INTERNET DOS LABORATORIOS DA UCAM CAMPOS-RJ.
+# DESENVOLVIDO POR MARCELLO MANHAES FERNANDES - marcello@ucam-campos.br
+#
+# VERSAO 2.5 ULTIMA ATUALIZACAO 03/05/2021.
+#
+# Versao 0.3 -> Adicionado o AP da Manutencao. Data 28/11/2009.
+# Versao 0.4 -> Remocao do AP da Manutencao. Data 12/08/2010.
+# Versao 0.5 -> Adicionado o "STATUS" ao lado dos menus de "Bloquear" e "Desbloquear". Data 13/08/2010.
+# Versao 0.6 -> Otimizacao de codigo. Data 14/08/2010.
+# Versao 0.7 -> Adicionado a funcao de bloqueio por Maquinas. Data 18/08/2010.
+# Versao 0.8 -> Correcao de bloqueio com maquinas com dois digitos. Data 20/09/2010.
+# Versao 0.9 -> Correcao na opcao de bloqueio e desbloqueio de maquina e adaptacao para Astaro v8. Data 01/02/2012.
+# Versao 1.0 -> Alteracao fisica dos laboratorios. Data 01/07/2012.
+# Versao 1.1 -> Inclusao do "Bloquear" e "Desbloquear" TV'S e limpeza de arquivos. Data 17/06/2014.
+# Versao 1.2 -> Alteracao no iptables liberando acesso somente ao site e o portal da UCAM. Data 17/06/2014.
+# Versao 1.3 -> Alteracao no layout do script e otimizacao de codigo. Data 18/06/2014.
+# Versao 1.4 -> Adaptacao para o IPFire. Data 24/06/2014.
+# Versao 1.5 -> Adicionada menssagem de "Bloqueio". Data 25/06/2014.
+# Versao 1.6 -> Alteracao no comando de bloqueio no iptables. Data 25/06/2014.
+# Versao 1.7 -> Incluido funcao para bloquer e desbloquear os laboratorios menos as maquinas das TVS e DataShow e acerto no código.
+# Versao 1.8 -> Alteracao no site da ucam e portal do aluno. Data 28/11/2016
+# Versao 1.9 -> Alteracao no comando de bloqueio e desbloqueio no iptables. 23/01/2017.
+# Versao 2.0 -> Inclusao no iptables para 186.237.48.92. 09/02/2017.
+# Versao 2.1 -> Alteracao no ip do site da ucam-campos. 15/09/2017.
+# Versao 2.2 -> Altercao no layout do menu principal e metodo de bloqueio das TV'S. 17/05/2018.
+# Versao 2.3 -> Aleracao no ip do site da ucam-campos. 05/04/2019.
+# Versao 2.4 -> Aleracao nos ips do site da ucam-campos. 23/11/2019.
+# Versao 2.5 -> Aleracao para o PFSense 2.5.1-RELEASE. 03/05/2021.
+
+## INICIO DA SECAO DOS MENUS ###
+Menu()		{	### Menu Principal.
+Atualiza ;
+Atualizatv ;
+Status ;
+StatusTV ;
+trap '' INT TSTP
+trap : 2
+trap : 3
+trap : 4
+#trap 'echo -e "*** ATENCAO CTRL + C [DESABILITADO] ***"' "" 2
+#trap 'echo -e "*** ATENCAO CTRL + Z [DESABILITADO] ***"' "" 20
+clear
+echo "╔══════════════════════════════════════════════════════════════╦══════════╗"
+echo "║          ..::  SISTEMA DE CONTROLE DE INTERNET  ::..         ║   V2.5   ║"
+echo "╠══════════════════════════╦═══════════════════════════════════╩══════════╣"
+echo "║      MENU PRINCIPAL      ║                     STATUS                   ║"
+echo "╠══════════════════════════╬══════╦══════════════╦═════════╦══════════════╣"
+echo -e "║   INFORME SUA OPCAO:     ║ LAB1 ║\e[$scolor1 $lab1stat \e[0m""║ LAB1-TV ║\e[$scolortv1 $lab1tvstat \e[0m""║"
+echo "║                          ╠══════╬══════════════╬═════════╬══════════════╣"
+echo -e "║                          ║ LAB2 ║\e[$scolor2 $lab2stat \e[0m""║ LAB2-TV ║\e[$scolortv2 $lab2tvstat \e[0m""║"
+echo "║    1 - BLOQUEAR          ╠══════╬══════════════╬═════════╬══════════════╣"
+echo -e "║                          ║ LAB3 ║\e[$scolor3 $lab3stat \e[0m""║ LAB3-TV ║\e[$scolortv3 $lab3tvstat \e[0m""║"
+echo "║    2 - DESBLOQUEAR       ╠══════╬══════════════╬═════════╬══════════════╣"
+echo -e "║                          ║ LAB4 ║\e[$scolor4 $lab4stat \e[0m""║ LAB4-TV ║\e[$scolortv4 $lab4tvstat \e[0m""║"
+echo "║    9 - SAIR              ╠══════╬══════════════╬═════════╬══════════════╣"
+echo -e "║                          ║ LAB5 ║\e[$scolor5 $lab5stat \e[0m""║ LAB5-TV ║\e[$scolortv5 $lab5tvstat \e[0m""║"
+echo "║                          ╠══════╬══════════════╬═════════╬══════════════╣"
+echo -e "║                          ║ LAB6 ║\e[$scolor6 $lab6stat \e[0m""║         ║              ""║"
+echo "╚══════════════════════════╩══════╩══════════════╩═════════╩══════════════╝"
+read OPC
+case $OPC in
+                1) Bloqm ;;
+                2) Ubloqm ;;
+                9) Sair ;;
+                *) Menu ;;
+esac
+}
+Bloqm()		{	### Menu Principal de Bloqueio.
+Atualiza ;
+Atualizatv ;
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                        MENU BLOQUEAR                      ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                                                           ║"
+echo "║                   INFORME SUA OPCAO                       ║"
+echo "║                                                           ║"
+echo "║                    1 - BLOQUEAR LABORATORIOS              ║"
+echo "║                    2 - BLOQUEAR MAQUINAS                  ║"
+echo "║                    3 - BLOQUEAR LABORATORIOS - TV         ║"
+echo "║                    9 - VOLTAR AO MENU PRINCIPAL           ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+                1) Bmlab ;; 	#Menu Bloqueio dos LABORATORIOS.
+                2) Bmmaq ;; 	#Menu Bloqueio das MAQUINAS.
+                3) Bmlabtv ;;  	#Menu Bloqueio dos Laboratorio menos as maquinas das TV's.
+		9) Menu ;;  	#Menu Principal.
+                *) Bloqm ;; 	#Menu Principal de Bloqueio.
+esac
+}
+Bmlab()		{	### Menu de Bloqueio dos LABORATORIOS.
+Atualiza ;
+Status ;
+unset OPC
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                        MENU BLOQUEAR                      ║"
+echo "╠═══════════════════════════════════╦═══════════════════════╣"
+echo "║                                   ║                       ║"
+echo "║      SELECIONE O LABORATORIO      ║     ..:: STATUS ::..  ║"
+echo "║                                   ║                       ║"
+echo -e "║             1 - LAB 1             ║     \e[$scolor1 $lab1stat \e[0m""    ║"
+echo -e "║             2 - LAB 2             ║     \e[$scolor2 $lab2stat \e[0m""    ║"
+echo -e "║             3 - LAB 3             ║     \e[$scolor3 $lab3stat \e[0m""    ║"
+echo -e "║             4 - LAB 4             ║     \e[$scolor4 $lab4stat \e[0m""    ║"
+echo -e "║             5 - LAB 5             ║     \e[$scolor5 $lab5stat \e[0m""    ║"
+echo -e "║             6 - LAB 6             ║     \e[$scolor6 $lab6stat \e[0m""    ║"
+echo "║                                   ║                       ║"
+echo "╠═══════════════════════════════════╩═══════════════════════╣"
+echo "║                                                           ║"
+echo "║                9 - VOLTAR AO MENU PRINCIPAL               ║"
+echo "║               00 - VOLTAR AO MENU BLOQUEAR                ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+		1) 	if  [ $STATUS1 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB1
+				`cp $HOME/status/LAB0n $HOME/status/LAB1`
+				MsgB LAB1
+		 	else
+			MsgBa LAB1
+			fi
+			Menu ;;
+
+		2) 	if [ $STATUS2 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB2
+				`cp $HOME/status/LAB0n $HOME/status/LAB2`
+				MsgB LAB2
+		 	else
+			MsgBa LAB2
+			fi
+			Menu ;;
+
+		3)      if [ $STATUS3 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB3
+				`cp $HOME/status/LAB0n $HOME/status/LAB3`
+		 		MsgB LAB3
+			else
+			MsgBa LAB3
+			fi
+			Menu ;;
+
+		4) 	if [ $STATUS4 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB4
+				`cp $HOME/status/LAB0n $HOME/status/LAB4`
+				MsgB LAB4
+		 	else
+			MsgBa LAB4
+			fi
+			Menu ;;
+
+		5) 	if [ $STATUS5 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB5
+				`cp $HOME/status/LAB0n $HOME/status/LAB5`
+		 		MsgB LAB5
+			else
+			MsgBa LAB5
+			fi
+			Menu ;;
+
+		6) 	if [ $STATUS6 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB6
+				`cp $HOME/status/LAB0n $HOME/status/LAB6`
+		 		MsgB LAB6
+			else
+			MsgBa LAB6
+			fi
+			Menu ;;
+		
+		9) Menu ;;
+		00) Bloqm ;;
+	    *) Bmlab ;;
+esac
+}
+Bmlabtv()	{	### Menu de Bloqueio dos LABORATORIOS menos as maquinas das TV's.
+Atualiza ;
+Atualizatv ;
+Status ;
+StatusTV ;
+unset OPC
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                        MENU BLOQUEAR                      ║"
+echo "╠═══════════════════════════════════╦═══════════════════════╣"
+echo "║                                   ║                       ║"
+echo "║      SELECIONE O LABORATORIO      ║    ..:: STATUS ::..   ║"
+echo "║                                   ║                       ║"
+echo -e "║             1 - LAB 1             ║     \e[$scolortv1 $lab1tvstat \e[0m""    ║"
+echo -e "║             2 - LAB 2             ║     \e[$scolortv2 $lab2tvstat \e[0m""    ║"
+echo -e "║             3 - LAB 3             ║     \e[$scolortv3 $lab3tvstat \e[0m""    ║"
+echo -e "║             4 - LAB 4             ║     \e[$scolortv4 $lab4tvstat \e[0m""    ║"
+echo -e "║             5 - LAB 5             ║     \e[$scolortv5 $lab5tvstat \e[0m""    ║"
+echo "║                                   ║                       ║"
+echo "╠═══════════════════════════════════╩═══════════════════════╣"
+echo "║                                                           ║"
+echo "║                9 - VOLTAR AO MENU PRINCIPAL               ║"
+echo "║               00 - VOLTAR AO MENU BLOQUEAR                ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+		1) 	if  [ $STATUSTV1 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB1TV
+				`cp $HOME/status/LAB0n $HOME/status/LAB1TV`
+				MsgB LAB1
+		 	else
+			MsgBa LAB1
+			fi
+			Menu ;;
+
+		2) 	if [ $STATUSTV2 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB2TV
+				`cp $HOME/status/LAB0n $HOME/status/LAB2TV`
+				MsgB LAB2
+		 	else
+			MsgBa LAB2
+			fi
+			Menu ;;
+
+		3)  if [ $STATUSTV3 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB3TV
+				`cp $HOME/status/LAB0n $HOME/status/LAB3TV`
+		 		MsgB LAB3
+			else
+			MsgBa LAB3
+			fi
+			Menu ;;
+
+		4) 	if [ $STATUSTV4 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB4TV
+				`cp $HOME/status/LAB0n $HOME/status/LAB4TV`
+				MsgB LAB4
+		 	else
+			MsgBa LAB4
+			fi
+			Menu ;;
+		5) 	if [ $STATUSTV5 = 0 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta bloqueado.
+				bloq LAB5TV
+				`cp $HOME/status/LAB0n $HOME/status/LAB5TV`
+				MsgB LAB5
+		 	else
+			MsgBa LAB5
+			fi
+			Menu ;;
+		
+		9) Menu ;;
+		00) Bloqm ;;
+	    *) Bmlab ;;
+esac
+}
+Bmmaq()		{	### Menu de Bloqueio das MAQUINAS.
+Atualiza ;
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                        MENU BLOQUEAR                      ║"
+echo "╠══════════════════════════════════════╦════════════════════╣"
+echo "║                                      ║                    ║"
+echo "║     SELECIONE O LABORATORIO          ║ Num. de Maq. BLOQ. ║"
+echo "║                                      ║                    ║"
+echo -e "║             1 - LAB 1                ║      `cat $HOME/status/Lab/cont1`             ║"
+echo -e "║             2 - LAB 2                ║      `cat $HOME/status/Lab/cont2`             ║"
+echo -e "║             3 - LAB 3                ║      `cat $HOME/status/Lab/cont3`             ║"
+echo -e "║             4 - LAB 4                ║      `cat $HOME/status/Lab/cont4`             ║"
+echo -e "║             5 - LAB 5                ║      `cat $HOME/status/Lab/cont5`             ║"
+echo -e "║             6 - LAB 6                ║      `cat $HOME/status/Lab/cont6`             ║"
+echo "║                                      ║                    ║"
+echo "╠══════════════════════════════════════╩════════════════════╣"
+echo "║                                                           ║"
+echo "║                9 - VOLTAR AO MENU PRINCIPAL               ║"
+echo "║               00 - VOLTAR AO MENU BLOQUEAR                ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+                1)  Printb25 LAB1 ;;
+                2)  Printb20 LAB2 ;;
+                3)  Printb20 LAB3 ;;
+                4)  Printb25 LAB4 ;;
+                5)  Printb12 LAB5 ;;
+                6)  Printb15 LAB6 ;;
+                
+                9) Menu ;;
+		00) Bloqm ;;
+                *) Bmmaq ;;
+esac
+}
+
+Ubloqm()	{	### Menu Principal para Desbloqueio.
+Atualiza ;
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                      MENU DESBLOQUEAR                     ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                                                           ║"
+echo "║                   INFORME SUA OPCAO                       ║"
+echo "║                                                           ║"
+echo "║                    1 - DESBLOQUEAR LABORATORIOS           ║"
+echo "║                    2 - DESBLOQUEAR MAQUINAS               ║"
+echo "║                    3 - DESBLOQUEAR LABORATORIOS - TV      ║"
+echo "║                    9 - VOLTAR AO MENU PRINCIPAL           ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+                1) Ubmlab 	;; #Menu Desbloqueio dos LABORATORIOS.
+                2) Ubmmaq 	;; #Menu Desbloqueio das MAQUINAS.
+                3) Ubmlabtv ;; #Menu Desbloqueio dos LABORATORIOS menos as maquinas das TV'S.
+				9) Menu 	;; #Menu Principal.
+                *) Ubloqm 	;; #Menu Principal de Desbloqueio.
+esac
+}
+Ubmlab()	{	### Menu de Desbloqueio dos LABORATORIOS.
+Atualiza ;
+Status ;
+unset OPC
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                      MENU DESBLOQUEAR                     ║"
+echo "╠═══════════════════════════════════╦═══════════════════════╣"
+echo "║                                   ║                       ║"
+echo "║      SELECIONE O LABORATORIO      ║   ..:: STATUS ::..    ║"
+echo "║                                   ║                       ║"
+echo -e "║             1 - LAB 1             ║    \e[$scolor1 "$lab1stat" \e[0m ""    ║"
+echo -e "║             2 - LAB 2             ║    \e[$scolor2 "$lab2stat" \e[0m ""    ║"
+echo -e "║             3 - LAB 3             ║    \e[$scolor3 "$lab3stat" \e[0m ""    ║"
+echo -e "║             4 - LAB 4             ║    \e[$scolor4 "$lab4stat" \e[0m ""    ║"
+echo -e "║             5 - LAB 5             ║    \e[$scolor5 "$lab5stat" \e[0m ""    ║"
+echo -e "║             6 - LAB 6             ║    \e[$scolor6 "$lab6stat" \e[0m ""    ║"
+echo "║                                   ║                       ║"
+echo "╠═══════════════════════════════════╩═══════════════════════╣"
+echo "║                                                           ║"
+echo "║                9 - VOLTAR AO MENU PRINCIPAL               ║"
+echo "║               00 - VOLTAR AO MENU DESBLOQUEAR             ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+                1)      if [ $STATUS1 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                               unbloq LAB1
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB1`
+                                MsgUn LAB1
+                        else
+                                MsgUa LAB1
+                        fi
+                        Menu ;;
+                2)      if [ $STATUS2 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB2
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB2`
+                                MsgUn LAB2
+                        else
+                                MsgUa LAB2
+                        fi
+                        Menu ;;
+                3)      if [ $STATUS3 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB3
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB3`
+                                MsgUn LAB3
+                        else
+                                MsgUa LAB3
+                        fi
+                        Menu ;;
+                4)      if [ $STATUS4 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB4
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB4`
+                                MsgUn LAB4
+                        else
+                                MsgUa LAB4
+                        fi
+                        Menu ;;
+                5)      if [ $STATUS5 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB5
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB5`
+                                MsgUn LAB5
+                        else
+                                MsgUa LAB5
+                        fi
+                        Menu ;;
+                6)      if [ $STATUS6 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB6
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB6`
+                                MsgUn LAB6
+                        else
+                                MsgUa LAB6
+                        fi
+                        Menu ;;
+                9) Menu ;;
+				00) Ubloqm ;;
+				*) Ubmlab ;;
+esac
+}
+Ubmlabtv()  {	### Menu de Desbloqueio dos LABORATORIOS menos as maquinas das TV's.
+Atualiza ;
+Atualizatv ;
+Status ;
+unset OPC
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                      MENU DESBLOQUEAR                     ║"
+echo "╠═══════════════════════════════════╦═══════════════════════╣"
+echo "║                                   ║                       ║"
+echo "║      SELECIONE O LABORATORIO      ║   ..:: STATUS ::..    ║"
+echo "║                                   ║                       ║"
+echo -e "║             1 - LAB 1             ║    \e[$scolortv1 "$lab1tvstat" \e[0m ""    ║"
+echo -e "║             2 - LAB 2             ║    \e[$scolortv2 "$lab2tvstat" \e[0m ""    ║"
+echo -e "║             3 - LAB 3             ║    \e[$scolortv3 "$lab3tvstat" \e[0m ""    ║"
+echo -e "║             4 - LAB 4             ║    \e[$scolortv4 "$lab4tvstat" \e[0m ""    ║"
+echo -e "║             5 - LAB 5             ║    \e[$scolortv5 "$lab5tvstat" \e[0m ""    ║"
+echo "║                                   ║                       ║"
+echo "╠═══════════════════════════════════╩═══════════════════════╣"
+echo "║                                                           ║"
+echo "║                9 - VOLTAR AO MENU PRINCIPAL               ║"
+echo "║               00 - VOLTAR AO MENU DESBLOQUEAR             ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+                1)      if [ $STATUSTV1 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                               unbloq LAB1TV
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB1TV`
+                                MsgUn LAB1
+                        else
+                                MsgUa LAB1
+                        fi
+                        Menu ;;
+                2)      if [ $STATUSTV2 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB2TV
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB2TV`
+                                MsgUn LAB2
+                        else
+                                MsgUa LAB2
+                        fi
+                        Menu ;;
+                3)      if [ $STATUSTV3 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB3TV
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB3TV`
+                                MsgUn LAB3
+                        else
+                                MsgUa LAB3
+                        fi
+                        Menu ;;
+                4)      if [ $STATUSTV4 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB4TV
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB4TV`
+                                MsgUn LAB4
+                        else
+                                MsgUa LAB4
+                        fi
+                        Menu ;;
+		5)      if [ $STATUSTV5 = 1 ]; then # Faz a verificacao do status do Laboratorio. Isto e se ele ja esta desbloqueado.
+                                unbloq LAB5TV
+                                `cp $HOME/status/LAB0ff $HOME/status/LAB5TV`
+                                MsgUn LAB5
+                        else
+                                MsgUa LAB5
+                        fi
+		        Menu ;;		
+                9) Menu ;;
+				00) Ubloqm ;;
+				*) Ubmlab ;;
+esac
+}
+Ubmmaq()	{	### Menu de Desbloqueio das MAQUINAS.
+clear
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║                      MENU DESBLOQUEAR                     ║"
+echo "╠══════════════════════════════════════╦════════════════════╣"
+echo "║                                      ║                    ║"
+echo "║     SELECIONE O LABORATORIO          ║ Num. de Maq. BLOQ. ║"
+echo "║                                      ║                    ║"
+echo -e "║             1 - LAB 1                ║      `cat $HOME/status/Lab/cont1`             ║"
+echo -e "║             2 - LAB 2                ║      `cat $HOME/status/Lab/cont2`             ║"
+echo -e "║             3 - LAB 3                ║      `cat $HOME/status/Lab/cont3`             ║"
+echo -e "║             4 - LAB 4                ║      `cat $HOME/status/Lab/cont4`             ║"
+echo -e "║             5 - LAB 5                ║      `cat $HOME/status/Lab/cont5`             ║"
+echo -e "║             6 - LAB 6                ║      `cat $HOME/status/Lab/cont6`             ║"
+echo "║                                      ║                    ║"
+echo "╠══════════════════════════════════════╩════════════════════╣"
+echo "║                                                           ║"
+echo "║                9 - VOLTAR AO MENU PRINCIPAL               ║"
+echo "║               00 - VOLTAR AO MENU DESBLOQUEAR             ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+read OPC
+case $OPC in
+                1)  Printu25 LAB1 ;;
+                2)  Printu20 LAB2 ;;
+                3)  Printu20 LAB3 ;;
+                4)  Printu25 LAB4 ;;
+                5)  Printu12 LAB5 ;;
+                6)  Printu15 LAB6 ;;
+		9)  Menu ;;
+		00) Ubloqm ;;
+                *) Ubmmaq ;;
+esac
+}
+### FIM DA SECAO DOS MENUS ###
+
+### INICIO FUNCOES DAS MAQUINAS ###
+ ContB()		{	### Essa funcao administra a quantidade de maquinas que foram Bloqueadas por Laboratorio.
+# Entrada: $1 = LABX.
+# Saida: Atualiza os contadores (+) dos LABORATORIOS.
+ap=`echo $1 | cut -b 4`
+case $ap in
+       1) cont1mb=`cat $HOME/status/Lab/cont1`
+	   Arq1=$HOME/status/Lab/cont1
+           cont1mb=$((cont1mb+1))
+           echo "$cont1mb" > $Arq1
+	   return ;;
+       2) cont2mb=`cat $HOME/status/Lab/cont2`
+           Arq2=$HOME/status/Lab/cont2
+           cont2mb=$((cont2mb+1))
+           echo "$cont2mb" > $Arq2
+           return ;;
+       3) cont3mb=`cat $HOME/status/Lab/cont3`
+           Arq3=$HOME/status/Lab/cont3
+           cont3mb=$((cont3mb+1))
+           echo "$cont3mb" > $Arq3
+           return ;;
+       4) cont4mb=`cat $HOME/status/Lab/cont4`
+           Arq4=$HOME/status/Lab/cont4
+           cont4mb=$((cont4mb+1))
+           echo "$cont4mb" > $Arq4
+           return ;;
+       5) cont5mb=`cat $HOME/status/Lab/cont5`
+           Arq5=$HOME/status/Lab/cont5
+           cont5mb=$((cont5mb+1))
+           echo "$cont5mb" > $Arq5
+           return ;;
+       6) cont6mb=`cat $HOME/status/Lab/cont6`
+           Arq6=$HOME/status/Lab/cont6
+           cont6mb=$((cont6mb+1))
+           echo "$cont6mb" > $Arq6
+           return ;;
+       
+esac
+}
+ ContUb()		{	### Essa funcao administra a quantidade de maquinas que foram Desbloqueadas por Laboratorio.
+# Entrada:
+# $1 = LABX.
+# Saida: Atualiza os contadores (-) dos LABORATORIOS.
+ab=`echo $1 | cut -b 4`
+case $ab in
+        1) contm1=`cat $HOME/status/Lab/cont1`
+           Arq1=$HOME/status/Lab/cont1
+           if [ $contm1 = 0 ]
+		   then
+		   return;
+		   fi
+		   contm1=$((contm1-1))
+           echo "$contm1" > $Arq1
+           return ;;
+       2) contm2=`cat $HOME/status/Lab/cont2`
+           Arq2=$HOME/status/Lab/cont2
+		   if [ $contm2 = 0 ]
+		   then
+		   return;
+		   fi
+           contm2=$((contm2-1))
+           echo "$contm2" > $Arq2
+           return ;;
+       3) contm3=`cat $HOME/status/Lab/cont3`
+           Arq3=$HOME/status/Lab/cont3
+           if [ $contm3 = 0 ]
+		   then
+		   return;
+		   fi
+		   contm3=$((contm3-1))
+           echo "$contm3" > $Arq3
+           return ;;
+       4) contm4=`cat $HOME/status/Lab/cont4`
+           Arq4=$HOME/status/Lab/cont4
+		   if [ $contm4 = 0 ]
+	           then
+		   return;
+		   fi
+           contm4=$((contm4-1))
+           echo "$contm4" > $Arq4
+           return ;;
+       5) contm5=`cat $HOME/status/Lab/cont5`
+           Arq5=$HOME/status/Lab/cont5
+            if [ $contm5 = 0 ]
+		   then
+		   return;
+		   fi
+		   contm5=$((contm5-1))
+           echo "$contm5" > $Arq5
+           return ;;
+       6) contm6=`cat $HOME/status/Lab/cont6`
+           Arq6=$HOME/status/Lab/cont6
+           if [ $contm6 = 0 ]
+		   then
+		   return;
+		   fi
+		   contm6=$((contm6-1))
+           echo "$contm6" > $Arq6
+           return ;;
+      
+esac
+}
+ Atualizamaq()	{	### Essa funcao verifica o status da maquina: "1" para Bloqueada e "0" para Desbloqueada.
+# Entrada: $1=LABX; $2=-YY; $3=LABX-YY; $4=Contador; $5=Arquivo;
+# Saida: funcao(Statusm) $1=LABX; $var2; $3=LABX-YY; $4=Contador; $5=Arquivo;
+clear
+	arqmaq=$HOME/status/Lab/$1/$3
+	var2=`cat $arqmaq` # Status da maquina ( 0 ou 1 ).
+	maq=$3
+	Statusm $1 $var2 $maq $4 $5
+
+return
+}
+ Statusm()		{	### Essa funcao imprime no arquivo do Laboratorio o status da maquina.
+# Entrada $1=LABX; $var2; $3=LABX-YY; $4=Contador; $5=Arquivo;
+# Saida: Arquivos
+clear
+if [ $2 = 0 ] ; then
+        estado="COM INTERNET"
+        scolor="\e[32;4m"
+        var=$1
+        arquivo=$5
+	    echo -e "║                  $3           ║    "$scolor"  "$estado" \e[0m   ║" >> $arquivo
+else
+        estado="SEM INTERNET"
+        scolor="\e[31;4m"
+        echo -e "║                  $3           ║    "$scolor" "$estado" \e[0m    ║" >> $arquivo
+
+fi
+return
+}
+ Bloqmaq()		{	### Essa funcao faz o Bloqueio da maquina.
+# Entrada: $1=opcfinal LABX-YY (Nome de chain); $2=opclab LABX (Laboratorio); $3=opcmaq	-YY	(NUMERO da maquina).
+# Saida: iptables
+	verif=`cat $HOME/status/Lab/$2/$1`
+	if [ $verif -eq 1 ] # Verfica se a maquina ja esta bloqueada.
+	then
+	MsgMaqeb $1
+	Bmmaq
+    fi
+	clear
+		opcnummaq=$3 # Recebe o 3º argumento e remove o "-" do Numero da maquina
+     		labip=`cat $HOME/$2 | awk "NR == $opcnummaq"` # Busca no arquivo do Lab o Ip da maquina
+		sudo pfctl -t LABM -T add $labip
+		cp $HOME/status/LAB0n $HOME/status/Lab/$2/$1
+		ContB $2
+		echo "A maquina:" $1 "ficou SEM INTERNET na:" `date` >> $HOME/status/logmaq
+		Msgmaqsb $1
+		Bmmaq
+		#Menu
+}
+ Unbloqmaq()	{	### Essa funcao faz o Desbloqueio da maquina.
+# Entrada: $1=opcfinal LABX-YY (Nome de chain); $2=opclab LABX (Laboratorio); $3=opcmaq	-YY	(NUMERO da maquina).
+# Saida: iptables
+	verif=`cat $HOME/status/Lab/$2/$1` # Verfica se a maquina ja esta desbloqueada.
+	if [ $verif -eq 0 ]
+	then
+		MsgMaqeu $1
+		Ubmmaq
+    fi
+        opcnummaq=$3 # Recebe o 3º argumento e remove o "-" do Numero da maquina
+        echo $opcnummaq "opcnummap"
+	labip=`cat $HOME/$2 | awk "NR == $opcnummaq"` # Busca no arquivo do Lab o Ip da maquina
+	sudo pfctl -t LABM -T delete $labip
+		cp $HOME/status/LAB0ff $HOME/status/Lab/$2/$1
+		ContUb $2
+		echo "A maquina:" $1 "ficou COM INTERNET na:" `date` >> $HOME/status/logmaq
+		Msgmaqsu $1
+		Ubmmaq
+		#Menu
+}
+### FIM FUNCOES DAS MAQUINAS ###
+
+### INICIO FUNCOES DOS LABORATORIOS ###
+ Atualiza()	{	### Essa funcao atualiza o Status dos 6 LABORATORIOS.
+clear
+        STATUS1=`cat $HOME/status/LAB1`
+        STATUS2=`cat $HOME/status/LAB2`
+        STATUS3=`cat $HOME/status/LAB3`
+        STATUS4=`cat $HOME/status/LAB4`
+        STATUS5=`cat $HOME/status/LAB5`
+        STATUS6=`cat $HOME/status/LAB6`
+        echo ${dstatus}
+return
+}
+ Atualizatv()     {       ### Essa funcao atualiza o Status das TV'S dos LABORATORIOS.
+clear
+        STATUSTV1=`cat $HOME/status/LAB1TV`
+        STATUSTV2=`cat $HOME/status/LAB2TV`
+        STATUSTV3=`cat $HOME/status/LAB3TV`
+        STATUSTV4=`cat $HOME/status/LAB4TV`
+        STATUSTV5=`cat $HOME/status/LAB5TV`
+        echo ${dstatus}
+return
+}
+
+ Status()	{	### Essa funcao atualiza a cor e o Status dos 6 LABORATORIOS.
+clear
+Atualiza ;
+if [ $STATUS1 = 1 ] ; then
+        lab1stat="SEM INTERNET"
+        scolor1="\e[31;4m"
+else
+        lab1stat="COM INTERNET"
+        scolor1="\e[32;4m"
+fi
+if [ $STATUS2 = 1 ] ; then
+        lab2stat="SEM INTERNET"
+        scolor2="\e[31;4m"
+else
+        lab2stat="COM INTERNET"
+        scolor2="\e[32;4m"
+fi
+if [ $STATUS3 = 1 ] ; then
+        lab3stat="SEM INTERNET"
+        scolor3="\e[31;4m"
+else
+        lab3stat="COM INTERNET"
+        scolor3="\e[32;4m"
+fi
+if [ $STATUS4 = 1 ] ; then
+        lab4stat="SEM INTERNET"
+        scolor4="\e[31;4m"
+else
+        lab4stat="COM INTERNET"
+        scolor4="\e[32;4m"
+fi
+if [ $STATUS5 = 1 ] ; then
+        lab5stat="SEM INTERNET"
+        scolor5="\e[31;4m"
+else
+        lab5stat="COM INTERNET"
+        scolor5="\e[32;4m"
+fi
+if [ $STATUS6 = 1 ] ; then
+        lab6stat="SEM INTERNET"
+        scolor6="\e[31;4m"
+else
+        lab6stat="COM INTERNET"
+        scolor6="\e[32;4m"
+fi
+return
+}
+ StatusTV()       {       ### Essa funcao atualiza a cor e o Status dos 6 LABORATORIOS.
+clear
+Atualizatv ;
+if [ $STATUSTV1 = 1 ] ; then
+        lab1tvstat="SEM INTERNET"
+        scolortv1="\e[31;4m"
+else
+        lab1tvstat="COM INTERNET"
+        scolortv1="\e[32;4m"
+fi
+if [ $STATUSTV2 = 1 ] ; then
+        lab2tvstat="SEM INTERNET"
+        scolortv2="\e[31;4m"
+else
+        lab2tvstat="COM INTERNET"
+        scolortv2="\e[32;4m"
+fi
+if [ $STATUSTV3 = 1 ] ; then
+        lab3tvstat="SEM INTERNET"
+        scolortv3="\e[31;4m"
+else
+        lab3tvstat="COM INTERNET"
+        scolortv3="\e[32;4m"
+fi
+if [ $STATUSTV4 = 1 ] ; then
+        lab4tvstat="SEM INTERNET"
+        scolortv4="\e[31;4m"
+else
+        lab4tvstat="COM INTERNET"
+        scolortv4="\e[32;4m"
+fi
+if [ $STATUSTV5 = 1 ] ; then
+        lab5tvstat="SEM INTERNET"
+        scolortv5="\e[31;4m"
+else
+        lab5tvstat="COM INTERNET"
+        scolortv5="\e[32;4m"
+fi
+return
+}
+
+ bloq()		{	### Essa funcao faz o Bloqueio dos 6 LABORATORIOS.
+# Entrada: $1=LABX $i=IP a ser bloqueado.
+# Saida: iptables
+        clear
+		for i in `cat $1`
+                 do
+			sudo pfctl -t $1 -T add $i
+		clear
+				echo "Bloqueando o ip: " $i "do" $1   
+				done
+	echo "O Laboratorio:" $1 "ficou SEM INTERNET na:" `date` >> $HOME/status/loglab
+return
+}
+ unbloq()	{	### Essa funcao faz o Desbloqueio dos 6 LABORATORIOS.
+# Entrada: $1=LABX
+# Saida: iptables
+        clear
+       for i in `cat $1`
+                 do
+			sudo pfctl -t $1 -T delete $i
+			clear
+			echo "Desbloqueando o IP:" $i "do" $1
+		done
+		echo "O Laboratorio:" $1 "ficou COM INTERNET na:" `date` >> $HOME/status/loglab
+return
+}
+### FIM FUNCOES DOS LABORATORIOS ###
+
+ Sair()	{ ### Essa e a funcao de Saida do Script.
+        sync
+        clear
+        rm -rf arquivo
+		rm -rf 1
+		rm -rf LAB12
+		rm -rf LAB15
+		rm -rf LAB20
+		rm -rf LAB25
+		logout ;
+
+}
+
+### INICIO FUNCOES DE MENSSAGENS ###
+ MsgB()		{	### funcao de menssagem de Laboratorio Bloqueado com Sucesso.
+        clear
+         echo -e "O" $1 "foi \e[31;4m "BLOQUEADO" \e[0m" com sucesso!""
+	sleep 3
+return
+}
+ MsgUn()	{	### funcao de menssagem de Laboratorio Desloqueado com Sucesso.
+        clear
+        echo -e "O" $1 "foi \e[32;4m "DESBLOQUEADO" \e[0m" com sucesso!""
+        sleep 3
+return
+}
+ MsgBa()	{	### funcao de menssagem de Laboratorio com erro de Bloqueio.
+        clear
+        echo -e "O" $1 "ja esta \e[31;4m "BLOQUEADO!" \e[0m"
+		echo "Verique o STATUS antes de bloquear novamente!!!"
+        sleep 5
+return
+}
+ MsgUa()	{	### funcao de menssagem de Laboratorio com erro de Desbloqueio.
+        clear
+        echo -e "O" $1 "ja esta \e[32;4m "DESBLOQUEADO!" \e[0m" 
+		echo "Verifique o STATUS antes de desbloquear novamente!!!"
+        sleep 5
+return
+}
+ Msgmaqsb()	{	### funcao de menssagem de maquina Bloqueada com Sucesso.
+        clear
+        echo -e "A maquina" $1 "foi \e[31;4m "BLOQUEADA" \e[0m" com sucesso!""
+        sleep 3
+return
+}
+ Msgmaqsu()	{	### funcao de menssagem de maquina Desbloqueada com Sucesso.
+        clear
+        echo -e "A maquina" $1 "foi \e[32;4m "DESBLOQUEADA" \e[0m" com sucesso!""
+        sleep 3
+return
+}
+ MsgMaqeb()	{	### funcao de menssagem de maquina com erro de Bloqueio.
+        clear
+        echo -e "A maquina" $1 "ja esta \e[31;4m "BLOQUEADA!" \e[0m" 
+		echo "Verique o STATUS antes de bloquear novamente!!!"
+        sleep 5
+return
+}
+ MsgMaqeu()	{	### funcao de menssagem de maquina com erro de Desbloqueio.
+        clear
+        echo -e "A maquina" $1 "ja esta \e[32;4m "DESBLOQUEADA!" \e[0m" 
+		echo "Verique o STATUS antes de bloquear novamente!!!"
+        sleep 5
+return
+}
+### FIM FUNCOES DE MENSSAGENS ###
+
+### INICIO DAS FUNCOES DAS MAQUINAS ###
+
+### INICIO funcao DOS LABORATORIOS COM 12 MAQUINAS ###
+ Ibloq12()	{	### funcao de Bloqueio final para LABORATORIOS com 12 MAQUINAS.
+cat $HOME/LAB12
+unset OPC
+read OPC
+case $OPC in
+                1)  Bloqmaq $1-01 $1 1 ;;
+                2)  Bloqmaq $1-02 $1 2 ;;
+                3)  Bloqmaq $1-03 $1 3 ;;
+                4)  Bloqmaq $1-04 $1 4 ;;
+                5)  Bloqmaq $1-05 $1 5 ;;
+                6)  Bloqmaq $1-06 $1 6 ;;
+                7)  Bloqmaq $1-07 $1 7 ;;
+                8)  Bloqmaq $1-08 $1 8 ;;
+                9)  Bloqmaq $1-09 $1 9 ;;
+                10) Bloqmaq $1-10 $1 10 ;;
+                11) Bloqmaq $1-11 $1 11 ;;
+                12) Bloqmaq $1-12 $1 12 ;;
+                00) Bloqm ;;
+                99) Menu ;;
+                *) Printb12 $1 ;;
+esac
+}
+ Iubloq12()	{	### funcao de Desbloqueio final para LABORATORIOS com 12 MAQUINAS.
+cat $HOME/LAB12
+unset OPC
+read OPC
+case $OPC in
+                1)  Unbloqmaq $1-01 $1 1 ;;
+                2)  Unbloqmaq $1-02 $1 2 ;;
+                3)  Unbloqmaq $1-03 $1 3 ;;
+                4)  Unbloqmaq $1-04 $1 4 ;;
+                5)  Unbloqmaq $1-05 $1 5 ;;
+                6)  Unbloqmaq $1-06 $1 6 ;;
+                7)  Unbloqmaq $1-07 $1 7 ;;
+                8)  Unbloqmaq $1-08 $1 8 ;;
+                9)  Unbloqmaq $1-09 $1 9 ;;
+                10) Unbloqmaq $1-10 $1 10 ;;
+                11) Unbloqmaq $1-11 $1 11 ;;
+                12) Unbloqmaq $1-12 $1 12 ;;
+                00) Ubloqm ;;
+                99) Menu ;;
+                *) Printu12 $1 ;;
+esac
+}
+ Printb12()	{	### funcao que imprime no arquivo de Bloqueio o Status dos LABORATORIOS com 12 MAQUINAS.
+# Entrada : $1=LABX
+# Saida : $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+arquivo=$HOME/LAB12
+if test -e $arquivo
+then
+        rm -rf $arquivo
+else
+ touch $arquivo
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU BLOQUEAR                          ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 12) # For de 1 a 12 para os LABORATORIOS com 12 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+        Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY,  LABX-YY, contador e o arquivo.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU BLOQUEAR                          ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Ibloq12 $1
+unset arquivo
+}
+ Printu12()	{	### funcao que imprime no arquivo de Desbloqueio o Status dos LABORATORIOS com 12 MAQUINAS.
+# Entrada: $1=LABX;
+# Saida: $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+arquivo=$HOME/LAB12
+if test -e $arquivo
+then
+        rm -f $arquivo
+else
+ touch LAB12
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 12) # For de 1 a 12 para os LABORATORIOS com 12 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+        Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY e LABX-YY e o arquivo.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Iubloq12 $1
+unset arquivo
+}
+### FIM funcao DOS LABORATORIOS COM 12 MAQUINAS ###
+
+### INICIO funcao DOS LABORATORIOS COM 15 MAQUINAS ###
+ Ibloq15()	{	### funcao de Bloqueio final para LABORATORIOS com 15 MAQUINAS.
+cat $HOME/LAB15
+unset OPC
+read OPC
+case $OPC in
+                1)  Bloqmaq $1-01 $1 1 ;;
+                2)  Bloqmaq $1-02 $1 2 ;;
+                3)  Bloqmaq $1-03 $1 3 ;;
+                4)  Bloqmaq $1-04 $1 4 ;;
+                5)  Bloqmaq $1-05 $1 5 ;;
+                6)  Bloqmaq $1-06 $1 6 ;;
+                7)  Bloqmaq $1-07 $1 7 ;;
+                8)  Bloqmaq $1-08 $1 8 ;;
+                9)  Bloqmaq $1-09 $1 9 ;;
+                10) Bloqmaq $1-10 $1 10 ;;
+                11) Bloqmaq $1-11 $1 11 ;;
+                12) Bloqmaq $1-12 $1 12 ;;
+                13) Bloqmaq $1-13 $1 13 ;;
+		14) Bloqmaq $1-14 $1 14 ;;
+		15) Bloqmaq $1-15 $1 15 ;;
+		00) Bloqm ;;
+                99) Menu ;;
+                *) Printb15 $1 ;;
+esac
+}
+ Iubloq15()	{	### funcao de Desbloqueio final para LABORATORIOS com 15 MAQUINAS.
+cat $HOME/LAB15
+unset OPC
+read OPC
+case $OPC in
+                1)  Unbloqmaq $1-01 $1 1 ;;
+                2)  Unbloqmaq $1-02 $1 2 ;;
+                3)  Unbloqmaq $1-03 $1 3 ;;
+                4)  Unbloqmaq $1-04 $1 4 ;;
+                5)  Unbloqmaq $1-05 $1 5 ;;
+                6)  Unbloqmaq $1-06 $1 6 ;;
+                7)  Unbloqmaq $1-07 $1 7 ;;
+                8)  Unbloqmaq $1-08 $1 8 ;;
+                9)  Unbloqmaq $1-09 $1 9 ;;
+                10) Unbloqmaq $1-10 $1 10 ;;
+                11) Unbloqmaq $1-11 $1 11 ;;
+                12) Unbloqmaq $1-12 $1 12 ;;
+                13) Unbloqmaq $1-13 $1 13 ;;
+		14) Unbloqmaq $1-14 $1 14 ;;
+		15) Unbloqmaq $1-15 $1 15 ;;
+		00) Ubloqm ;;
+                99) Menu ;;
+                *) Printu15 $1 ;;
+esac
+}
+ Printb15()	{	### funcao que imprime no arquivo de Bloqueio o Status dos LABORATORIOS com 15 MAQUINAS.
+# Entrada : $1=LABX
+# Saida : $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+arquivo=$HOME/LAB15
+if test -e $arquivo
+then
+        rm -f $arquivo
+else
+ touch $arquivo
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU BLOQUEAR                          ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 15) # For de 1 a 15 para os LABORATORIOS com 12 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+	Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY,  LABX-YY, contador e o arquivo.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU BLOQUEAR                          ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Ibloq15 $1
+unset arquivo
+}
+ Printu15()	{	### funcao que imprime no arquivo de Desbloqueio o Status dos LABORATORIOS com 15 MAQUINAS.
+# Entrada: $1=LABX;
+# Saida: $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+arquivo=$HOME/LAB15
+if test -e $arquivo
+then
+        rm -f $arquivo
+else
+ touch LAB15
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 15) # For de 1 a 15 para os LABORATORIOS com 15 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+        Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY e LABX-YY e o arquivo.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Iubloq15 $1
+unset arquivo
+}
+### FIM funcao DOS LABORATORIOS COM 15 MAQUINAS ###
+
+### INICIO FUNCOES DOS LABORATORIOS COM 20 MAQUINAS ###
+ Ibloq20()	{	### funcao de Bloqueio final para LABORATORIOS com 20 MAQUINAS.
+cat $HOME/LAB20
+unset OPC
+read OPC
+case $OPC in
+                1)  Bloqmaq $1-01 $1 1 ;;
+                2)  Bloqmaq $1-02 $1 2 ;;
+                3)  Bloqmaq $1-03 $1 3 ;;
+                4)  Bloqmaq $1-04 $1 4 ;;
+                5)  Bloqmaq $1-05 $1 5 ;;
+                6)  Bloqmaq $1-06 $1 6 ;;
+                7)  Bloqmaq $1-07 $1 7 ;;
+                8)  Bloqmaq $1-08 $1 8 ;;
+                9)  Bloqmaq $1-09 $1 9 ;;
+                10) Bloqmaq $1-10 $1 10 ;;
+                11) Bloqmaq $1-11 $1 11 ;;
+                12) Bloqmaq $1-12 $1 12 ;;
+                13) Bloqmaq $1-13 $1 13 ;;
+                14) Bloqmaq $1-14 $1 14 ;;
+                15) Bloqmaq $1-15 $1 15 ;;
+                16) Bloqmaq $1-16 $1 16 ;;
+                17) Bloqmaq $1-17 $1 17 ;;
+                18) Bloqmaq $1-18 $1 18 ;;
+                19) Bloqmaq $1-19 $1 19 ;;
+                20) Bloqmaq $1-20 $1 20 ;;
+                00) Bloqm ;;
+                99) Menu ;;
+                *) Printb20 $1 ;;
+esac
+}
+ Iubloq20()	{	### funcao de Desbloqueio final para LABORATORIOS com 20 MAQUINAS.
+cat $HOME/LAB20
+unset OPC
+read OPC
+case $OPC in
+                1)  Unbloqmaq $1-01 $1 1 ;;
+                2)  Unbloqmaq $1-02 $1 2 ;;
+                3)  Unbloqmaq $1-03 $1 3 ;;
+                4)  Unbloqmaq $1-04 $1 4 ;;
+                5)  Unbloqmaq $1-05 $1 5 ;;
+                6)  Unbloqmaq $1-06 $1 6 ;;
+                7)  Unbloqmaq $1-07 $1 7 ;;
+                8)  Unbloqmaq $1-08 $1 8 ;;
+                9)  Unbloqmaq $1-09 $1 9 ;;
+                10) Unbloqmaq $1-10 $1 10 ;;
+                11) Unbloqmaq $1-11 $1 11 ;;
+                12) Unbloqmaq $1-12 $1 12 ;;
+                13) Unbloqmaq $1-13 $1 13 ;;
+                14) Unbloqmaq $1-14 $1 14 ;;
+                15) Unbloqmaq $1-15 $1 15 ;;
+                16) Unbloqmaq $1-16 $1 16 ;;
+                17) Unbloqmaq $1-17 $1 17 ;;
+                18) Unbloqmaq $1-18 $1 18 ;;
+                19) Unbloqmaq $1-19 $1 19 ;;
+                20) Unbloqmaq $1-20 $1 20 ;;
+                00) Ubloqm ;;
+                99) Menu ;;
+                *) Printu20 $1 ;;
+esac
+}
+ Printb20()	{	### funcao que imprime no arquivo de Bloqueio o Status dos LABORATORIOS com 20 MAQUINAS.
+# Entrada : $1=LABX;
+# Saida : $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+arquivo=$HOME/LAB20
+if test -e $arquivo
+then
+        rm -f $arquivo
+else
+ touch LAB20
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU BLOQUEAR                          ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 20) # For de 1 a 20 para os LABORATORIOS com 20 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+	Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY e LABX-YY.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU BLOQUEAR                          ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Ibloq20 $1
+unset arquivo
+}
+ Printu20()	{	### funcao que imprime no arquivo de Desbloqueio o Status dos LABORATORIOS com 20 MAQUINAS.
+# Entrada: $1=LABX;
+# Saida: $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+ arquivo=$HOME/LAB20
+if test -e $arquivo
+then
+        rm -f $arquivo
+else
+ touch LAB20
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 20) # For de 1 a 20 para os LABORATORIOS com 20 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+        Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY e LABX-YY.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Iubloq20 $1
+unset arquivo
+}
+### FIM FUNCOES DOS LABORATORIOS COM 20 MAQUINAS ###
+
+### INICIO FUNCOES DOS LABORATORIOS COM 25 MAQUINAS ###
+ Ibloq25()	{	### funcao de Bloqueio final para LABORATORIOS com 25 MAQUINAS.
+cat $HOME/LAB25
+unset OPC
+read OPC
+case $OPC in
+				1)  Bloqmaq $1-01 $1 1 ;;
+                2)  Bloqmaq $1-02 $1 2 ;;
+                3)  Bloqmaq $1-03 $1 3 ;;
+                4)  Bloqmaq $1-04 $1 4 ;;
+                5)  Bloqmaq $1-05 $1 5 ;;
+                6)  Bloqmaq $1-06 $1 6 ;;
+                7)  Bloqmaq $1-07 $1 7 ;;
+                8)  Bloqmaq $1-08 $1 8 ;;
+                9)  Bloqmaq $1-09 $1 9 ;;
+                10) Bloqmaq $1-10 $1 10 ;;
+                11) Bloqmaq $1-11 $1 11 ;;
+                12) Bloqmaq $1-12 $1 12 ;;
+                13) Bloqmaq $1-13 $1 13 ;;
+                14) Bloqmaq $1-14 $1 14 ;;
+                15) Bloqmaq $1-15 $1 15 ;;
+                16) Bloqmaq $1-16 $1 16 ;;
+                17) Bloqmaq $1-17 $1 17 ;;
+                18) Bloqmaq $1-18 $1 18 ;;
+                19) Bloqmaq $1-19 $1 19 ;;
+                20) Bloqmaq $1-20 $1 20 ;;
+                21) Bloqmaq $1-21 $1 21 ;;
+                22) Bloqmaq $1-22 $1 22 ;;
+                23) Bloqmaq $1-23 $1 23 ;;
+                24) Bloqmaq $1-24 $1 24 ;;
+                25) Bloqmaq $1-25 $1 25 ;;
+                00) Bloqm ;;
+                99) Menu ;;
+                *) Printb25 $1 ;;
+esac
+}
+ Iubloq25()	{	### funcao de Desbloqueio final para LABORATORIOS com 25 MAQUINAS.
+cat $HOME/LAB25
+unset OPC
+read OPC
+case $OPC in
+                1)  Unbloqmaq $1-01 $1 1 ;;
+                2)  Unbloqmaq $1-02 $1 2 ;;
+                3)  Unbloqmaq $1-03 $1 3 ;;
+                4)  Unbloqmaq $1-04 $1 4 ;;
+                5)  Unbloqmaq $1-05 $1 5 ;;
+                6)  Unbloqmaq $1-06 $1 6 ;;
+                7)  Unbloqmaq $1-07 $1 7 ;;
+                8)  Unbloqmaq $1-08 $1 8 ;;
+                9)  Unbloqmaq $1-09 $1 9 ;;
+                10) Unbloqmaq $1-10 $1 10 ;;
+                11) Unbloqmaq $1-11 $1 11 ;;
+                12) Unbloqmaq $1-12 $1 12 ;;
+                13) Unbloqmaq $1-13 $1 13 ;;
+                14) Unbloqmaq $1-14 $1 14 ;;
+                15) Unbloqmaq $1-15 $1 15 ;;
+                16) Unbloqmaq $1-16 $1 16 ;;
+                17) Unbloqmaq $1-17 $1 17 ;;
+                18) Unbloqmaq $1-18 $1 18 ;;
+                19) Unbloqmaq $1-19 $1 19 ;;
+                20) Unbloqmaq $1-20 $1 20 ;;
+                21) Unbloqmaq $1-21 $1 21 ;;
+                22) Unbloqmaq $1-22 $1 22 ;;
+                23) Unbloqmaq $1-23 $1 23 ;;
+                24) Unbloqmaq $1-24 $1 24 ;;
+                25) Unbloqmaq $1-25 $1 25 ;;
+                00) Ubloqm ;;
+                99) Menu ;;
+                *) Printu25 $1 ;;
+esac
+}
+ Printb25()	{	### funcao que imprime no arquivo de Bloqueio o Status dos LABORATORIOS com 25 MAQUINAS.
+# Entrada : $1=LABX;
+# Saida : $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+arquivo=$HOME/LAB25
+if test -e $arquivo
+then
+        rm -f $arquivo
+else
+ touch LAB25
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU BLOQUEAR                          ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 25) # For de 1 a 25 para os LABORATORIOS com 25 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+        Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY e LABX-YY.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU BLOQUEAR                          ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Ibloq25 $1
+unset arquivo
+}
+ Printu25()	{	### funcao que imprime no arquivo de Desbloqueio o Status dos LABORATORIOS com 20 MAQUINAS.
+# Entrada : $1=LABX;
+# Saida : $1=LABX; $Num=-YY; $Maq=LABX-YY; $i=YY; $arquivo=LABX;
+arquivo=$HOME/LAB25
+if test -e $arquivo
+then
+        rm -f $arquivo
+else
+ touch LAB25
+fi
+unset OPC
+echo "╔═══════════════════════════════════════════════════════════╗" >> $arquivo
+echo "║        ..::  SISTEMA DE CONTROLE DE INTERNET  ::..        ║" >> $arquivo
+echo "╠═══════════════════════════════════════════════════════════╣" >> $arquivo
+echo "║                    MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "╠════════════════════════════════════╦══════════════════════╣" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+echo "║ Informe o NUMERO da maquina SEM 0  ║   ..:: STATUS ::..   ║" >> $arquivo
+echo "║                                    ║                      ║" >> $arquivo
+for i in $(seq 1 25) # For de 1 a 25 para os LABORATORIOS com 25 MAQUINAS.
+do
+        if [ $i -lt 10 ] # Se o valor do contador for menor que 10 foi necessario adcionar o 0 entre o - e numero.
+        then
+        Num=-0$i
+        else
+        Num=-$i
+        fi
+        Maq=$1$Num
+        Atualizamaq $1 $Num $Maq $i $arquivo # Passa como Parametro o LABX, -YY e LABX-YY.
+done
+echo "║                                    ║                      ║" >> $arquivo
+echo "╠════════════════════════════════════╩══════════════════════╣" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "║               00 - MENU DESBLOQUEAR                       ║" >> $arquivo
+echo "║               99 - MENU PRINCIPAL                         ║" >> $arquivo
+echo "║                                                           ║" >> $arquivo
+echo "╚═══════════════════════════════════════════════════════════╝" >> $arquivo
+Iubloq25 $1
+unset arquivo
+}
+### FIM FUNCOES DOS LABORATORIOS COM 25 MAQUINAS ###
+
+### FIM DA FUNCOES DAS MAQUINAS ###
+Menu
