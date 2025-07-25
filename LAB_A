@@ -1,0 +1,5 @@
+#!/bin/sh
+iptables -D FORWARD -j LAB_B
+iptables -D INPUT -j LAB_B
+iptables -F LAB_B
+iptables -X LAB_B
